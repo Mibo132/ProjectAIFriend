@@ -29,7 +29,11 @@ await page.goto(url);
 // onboarding
 await page.waitForSelector("#ob-start");
 check(true, "welcome screen shows on first visit");
+check(await page.locator("#ob-start").isDisabled(), "entry is locked until 18+ is confirmed");
+await page.keyboard.press("Escape");
+check(await page.locator("#ob-start").count() === 1, "age gate can't be dismissed");
 await page.fill("#ob-name", "Sam");
+await page.check("#ob-age");
 await page.click('[data-accent="262"]');
 await page.click("#ob-start");
 check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent-h"))).trim() === "262", "accent color applies");
@@ -79,6 +83,7 @@ check(/minors|adult/i.test(await page.locator("#iErr").innerText()), "image prom
 await page.fill("#i-prompt", "reading in a sunny window seat");
 await page.click('[data-i="go"]');
 await page.waitForSelector("#studioCanvas img[src]", { timeout: 10000 });
+check(await page.locator("[data-spicy]").count() === 5 && await page.locator("#i-nsfw").isChecked(), "18+ image ideas and NSFW on for an 18+ companion");
 check(true, "image studio generates an image");
 await page.screenshot({ path: `${out}/3-studio.png` });
 await page.click('[data-i="avatar"]');
@@ -87,6 +92,7 @@ await page.keyboard.press("Escape");
 
 // AI creator (archetype, demo mode)
 await page.click('.side [data-act="creator"]');
+check(await page.locator('[data-arch="flirt"]').count() === 1, "18+ archetypes listed");
 await page.click('[data-arch="artist"]');
 await page.click('[data-c="generate"]');
 await page.waitForSelector(".preview-info h3");
@@ -108,7 +114,11 @@ await page.fill("#f-age", "29");
 await page.click('[data-tab="voice"]');
 check(await page.locator("#f-amb").count() === 1, "voice & sound tab renders");
 await page.click('[data-tab="chat"]');
-check(await page.locator("#f-mature").isDisabled(), "18+ switch locked until settings allow");
+check(await page.locator("#f-mature").isChecked(), "new companions start with 18+ on");
+await page.click('[data-tab="look"]'); await page.fill("#f-tags", "schoolgirl uniform");
+await page.click('[data-e="save"]');
+check(/minor/.test(await page.locator("#edErr").innerText()), "childlike look is rejected");
+await page.fill("#f-tags", "silver rings");
 await page.screenshot({ path: `${out}/5-editor.png` });
 await page.click('[data-e="save"]');
 check((await page.locator(".topbar h2").innerText()) === "Test Person", "new companion created");
@@ -116,11 +126,11 @@ check((await page.locator(".topbar h2").innerText()) === "Test Person", "new com
 // settings: 18+ gate
 await page.click('.side-foot [data-act="settings"]');
 await page.click('[data-stab="mature"]');
-check(await page.locator("#s-mature").isDisabled(), "18+ disabled before age confirmation");
-await page.check("#s-age"); await page.check("#s-mature");
-await page.click('[data-s="save"]');
+check(await page.locator("#s-mature").isChecked() && await page.locator("#s-age").isChecked(), "mature mode on after the age gate");
+check(await page.locator('[data-pick="intensity"] [aria-pressed="true"]').innerText() === "Explicit", "explicit intensity by default");
+await page.click('[data-s="close"]');
 await page.click('#panel [data-act="edit"]'); await page.click('[data-tab="chat"]');
-check(!(await page.locator("#f-mature").isDisabled()), "18+ switch unlocked after opting in");
+check(!(await page.locator("#f-mature").isDisabled()) && await page.locator("#f-on").count() === 1, "18+ switch and turn-ons/limits available");
 await page.keyboard.press("Escape");
 
 // persistence incl. images
@@ -138,7 +148,7 @@ const m = await browser.newPage({ viewport: { width: 390, height: 800 }, colorSc
 m.on("pageerror", e => errors.push("mobile pageerror: " + e.message));
 await m.route(/fonts\.(googleapis|gstatic)/, r => r.abort());
 await m.goto(url);
-await m.click("#ob-start");
+await m.check("#ob-age"); await m.click("#ob-start");
 await m.screenshot({ path: `${out}/6-mobile-list.png` });
 await m.locator(".item", { hasText: "Juno" }).click();
 check(await m.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "no horizontal scroll on phone");

@@ -24,10 +24,13 @@ Design AI companions (friends, girlfriends, boyfriends, partners, mentors, or an
 - Portraits, selfies, outfits and scenes in six styles and three shapes. Every image lands in the companion's gallery and can become their avatar or chat background.
 - Providers: Pollinations (free, no key), OpenAI-compatible image APIs, Stable Diffusion WebUI or Forge (local, any checkpoint), Claude SVG illustrations (inside claude.ai), or offline placeholder art.
 
-**18+**
-- Turning it on takes an age confirmation plus a global switch, then a per-companion switch and a per-image switch in the studio.
-- Every companion must be 18 or older, and every image prompt is checked so it never depicts minors, whatever the setting.
-- What's actually allowed depends on the AI and image providers you connect.
+**18+ (adults only)**
+- An age gate on entry: you confirm you're 18 or older before anything else. That turns on mature mode.
+- Intensity: **Explicit** (graphic scenes allowed, no fade-to-black) or **Suggestive** (flirting and tension, fade-to-black).
+- Per companion: an 18+ switch (on by default for new companions), plus turn-ons and hard limits that go into the prompt.
+- 18+ archetypes in the AI Creator, 18+ idea presets in the image studio, and spicy photo requests in chat ("send me something sexy").
+- Hard limits no setting changes: every companion is 18 or older, companion looks can't describe a minor or someone childlike, image prompts that describe minors are blocked, and every chat prompt forbids sexual content involving minors.
+- What's actually generated depends on your providers. Claude (built-in) stays within Anthropic's usage policies. For explicit chat, use an OpenAI-compatible provider with a model that allows adult content (OpenRouter, LM Studio, Ollama). For explicit images, use Stable Diffusion WebUI or Forge with an NSFW-capable checkpoint, or Pollinations.
 
 **App**
 - Installable (manifest and service worker) and works offline for everything except the AI calls.

@@ -1,5 +1,5 @@
 // Kindred service worker: caches the app shell so it opens offline. API calls always go to the network.
-const CACHE = "kindred-v0.2.0";
+const CACHE = "kindred-v0.3.0";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

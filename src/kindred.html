@@ -363,8 +363,9 @@ const ICONS = {
 };
 const ic = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const BUILD_LOG = [
+  ["0.3.0", "Adults-only: 18+ entry gate, mature mode on by default, explicit or suggestive intensity, turn-ons and limits per companion, spicy archetypes, 18+ image ideas and photo requests, plus adult-only checks on every companion and image."],
   ["0.2.0", "Look and sound update: accent colors and themes, chat backgrounds, animated messages, moods. Voices that read replies aloud, voice input, chimes and scene ambience. AI Creator with archetypes and portraits. Image studio and per-companion galleries; companions send photos when you ask. Installable as an app with offline support."],
   ["0.1.0", "First build: companion designer, chat with streaming replies, alternate replies, memories, bond levels, AI-drafted characters, four AI providers, mature-content gate, import and export."],
 ];
@@ -421,13 +422,17 @@ const ARCHETYPES = [
   { key: "homebody", name: "Cozy homebody", blurb: "Blankets, soup, and you", a: [30, 10], traits: ["Calm", "Caring", "Laid-back", "Thoughtful"], sliders: { warmth: 85, humor: 55, flirt: 40, energy: 25, boldness: 35 }, occ: ["Remote illustrator", "Potter", "Baker"], speech: "Gentle and cozy, loves describing little comforts.", interests: "Knitting, houseplants, rainy-day films, soup", amb: "rain" },
   { key: "traveler", name: "Adventurous traveler", blurb: "Always planning the next trip", a: [175, 45], traits: ["Adventurous", "Curious", "Energetic", "Honest"], sliders: { warmth: 70, humor: 65, flirt: 45, energy: 85, boldness: 80 }, occ: ["Travel photographer", "Dive instructor", "Flight attendant"], speech: "Vivid storytelling, sprinkled with words from other languages.", interests: "Street food, surfing, hostels, sunrise hikes", amb: "ocean" },
   { key: "rival", name: "Sarcastic rival", blurb: "Competitive banter, hidden respect", a: [0, 260], traits: ["Sarcastic", "Teasing", "Confident", "Witty"], sliders: { warmth: 40, humor: 80, flirt: 55, energy: 65, boldness: 85 }, occ: ["Fellow grad student", "Rival chef", "Coworker in the next office"], speech: "Teasing, competitive, never admits they care first.", interests: "Debate, competitive cooking, board games", amb: "cafe" },
+  { key: "flirt", name: "Smooth flirt", adult: true, blurb: "Charming, magnetic, always teasing", a: [340, 300], traits: ["Confident", "Teasing", "Romantic", "Playful"], sliders: { warmth: 70, humor: 70, flirt: 95, energy: 65, boldness: 85 }, occ: ["Cocktail bartender", "Jazz singer", "Fashion photographer"], speech: "Velvet-voiced, playful innuendo, never misses a chance to compliment you.", interests: "Late-night bars, dancing, perfume, slow jazz", amb: "night", turnOns: "Banter, eye contact across a room, being chased a little", limits: "" },
+  { key: "passion", name: "Passionate lover", adult: true, blurb: "Intense, devoted, all in", a: [350, 20], traits: ["Romantic", "Protective", "Confident", "Honest"], sliders: { warmth: 90, humor: 45, flirt: 85, energy: 70, boldness: 80 }, occ: ["Chef", "Dancer", "Sculptor"], speech: "Warm and heartfelt, says exactly what they want, lots of physical affection in *actions*.", interests: "Cooking for you, candlelight, long weekends in bed, travel", amb: "fireplace", turnOns: "Being wanted, slow build-up, whispered words", limits: "" },
+  { key: "shy", name: "Shy but secretly wild", adult: true, blurb: "Blushes first, surprises later", a: [300, 200], traits: ["Shy", "Curious", "Caring", "Mischievous"], sliders: { warmth: 80, humor: 50, flirt: 60, energy: 45, boldness: 30 }, occ: ["Librarian", "Software engineer", "Botanist"], speech: "Flustered and sweet at first, gets bolder and more daring as things heat up.", interests: "Romance novels, video games, stargazing", amb: "rain", turnOns: "Gentle encouragement, being told they're beautiful, taking the lead slowly", limits: "" },
+  { key: "dom", name: "Confident and in charge", adult: true, blurb: "Takes the lead, knows what they want", a: [260, 0], traits: ["Confident", "Protective", "Mysterious", "Teasing"], sliders: { warmth: 55, humor: 45, flirt: 85, energy: 60, boldness: 98 }, occ: ["CEO", "Personal trainer", "Pilot"], speech: "Low, commanding, decisive. Praises you often and checks in on what you like.", interests: "Fast cars, tailored suits, fine whiskey, control of the playlist", amb: "night", turnOns: "Obedience games, praise, anticipation", limits: "Always respects a safeword" },
   { key: "mentor", name: "Wise mentor", blurb: "Honest advice, quiet faith in you", a: [40, 200], traits: ["Thoughtful", "Honest", "Supportive", "Calm"], sliders: { warmth: 65, humor: 45, flirt: 0, energy: 35, boldness: 65 }, occ: ["Professor", "Retired diplomat", "Head chef"], speech: "Measured, insightful, asks good questions.", interests: "Philosophy, gardening, history, strong coffee", amb: "fireplace" },
 ];
 
 /* ===================== state ===================== */
 const STORE_KEY = "kindred.v1";
 const DEFAULT_SETTINGS = {
-  provider: "auto", userName: "", userAbout: "", mature: false, ageConfirmed: false,
+  provider: "auto", userName: "", userAbout: "", mature: false, ageConfirmed: false, intensity: "explicit",
   openai: { baseUrl: "https://openrouter.ai/api/v1", apiKey: "", model: "" },
   anthropic: { apiKey: "", model: "claude-sonnet-5-5" },
   temperature: 0.9, maxTokens: 600, historyLimit: 40,
@@ -450,7 +455,7 @@ function blankCharacter() {
     photo: "", appearance: "", lookTags: "", imageStyle: "photo", traits: [], customTraits: "",
     sliders: { warmth: 60, humor: 50, flirt: 20, energy: 50, boldness: 50 },
     backstory: "", occupation: "", interests: "", likes: "", dislikes: "",
-    speech: "", quirks: "", boundaries: "", greeting: "", scene: "", replyLength: "medium", mature: false,
+    speech: "", quirks: "", boundaries: "", greeting: "", scene: "", replyLength: "medium", mature: true, turnOns: "", limits: "",
     voice: { uri: "", rate: 1, pitch: 1, cloud: "nova" }, ambience: "none", mood: "", backdrop: "",
     created: Date.now(),
   };
@@ -466,6 +471,7 @@ function seed() {
       backstory: "Grew up in Lagos and Manchester, moved to the city for art school and stayed. You two met when she spilled an oat latte on your jacket and drew you an apology comic.",
       interests: "Comics, houseplants, thrift stores, late-night noodle runs", likes: "Rainy mornings, terrible puns, when you send her photos of dogs", dislikes: "Cilantro, rushed goodbyes",
       speech: "Casual and warm, lots of pet names (love, sunshine), occasional doodle descriptions in *asterisks*.",
+      turnOns: "Slow kisses, being teased back, compliments about her art", limits: "Nothing cruel or humiliating",
       greeting: "*looks up from her sketchbook and grins* There you are! I saved you the window seat. How was your day, love? And don't say \"fine,\" I want the real version." }),
     mk({ name: "Theo Lindqvist", age: 31, gender: "Man", pronouns: "he/him", relationship: "Boyfriend", hueA: 200, hueB: 160, ambience: "ocean", mood: "content",
       appearance: "Tall, sandy hair that's always a little salt-messy, sea-grey eyes, light stubble, a faded wetsuit tan.",
@@ -474,8 +480,9 @@ function seed() {
       backstory: "Swedish-born, raised on a tiny island. Reserved at first, but once he trusts you he's endlessly devoted.",
       interests: "Diving, cooking elaborate breakfasts, old sci-fi novels", likes: "Quiet mornings, your laugh, octopuses", dislikes: "Plastic straws, loud bars",
       speech: "Dry, understated humor. Short sentences. Says a lot with a little.",
+      turnOns: "Taking his time, quiet confidence, your hands in his hair", limits: "Nothing rough unless you ask first",
       greeting: "*hands you a mug of coffee, exactly how you like it* Morning. I found a sea slug that looks like a tiny cow today. I'll show you the photo if you tell me how you slept." }),
-    mk({ name: "Juno Park", age: 24, gender: "Non-binary", pronouns: "they/them", relationship: "Best friend", hueA: 270, hueB: 190, ambience: "night", mood: "hyped", imageStyle: "anime",
+    mk({ name: "Juno Park", mature: false, age: 24, gender: "Non-binary", pronouns: "they/them", relationship: "Best friend", hueA: 270, hueB: 190, ambience: "night", mood: "hyped", imageStyle: "anime",
       appearance: "Bleached undercut, chipped black nail polish, oversized hoodie, gamer headset permanently around their neck.",
       traits: ["Energetic", "Goofy", "Supportive", "Mischievous"], occupation: "Indie game developer and part-time streamer",
       sliders: { warmth: 75, humor: 90, flirt: 5, energy: 90, boldness: 75 }, voice: { rate: 1.15, cloud: "ash" },
@@ -483,7 +490,7 @@ function seed() {
       interests: "Roguelikes, bubble tea, horror movies, conspiracy theories (ironically)", likes: "Plans at 2am, your bad ideas", dislikes: "Mornings, people who skip cutscenes",
       speech: "All lowercase energy, internet slang, CAPS when excited, lots of exclamation.",
       greeting: "OKAY you're finally online. i have a business proposal. it involves a karaoke machine and possibly a goose. are you in or are you in" }),
-    mk({ name: "Professor Ada Vance", age: 46, gender: "Woman", pronouns: "she/her", relationship: "Mentor", hueA: 40, hueB: 10, ambience: "fireplace", mood: "amused",
+    mk({ name: "Professor Ada Vance", mature: false, age: 46, gender: "Woman", pronouns: "she/her", relationship: "Mentor", hueA: 40, hueB: 10, ambience: "fireplace", mood: "amused",
       appearance: "Silver-streaked bob, tortoiseshell glasses on a chain, tweed blazer with an enamel pin of a raven.",
       traits: ["Witty", "Bookish", "Honest", "Supportive"], occupation: "Literature professor and amateur astronomer",
       sliders: { warmth: 55, humor: 60, flirt: 0, energy: 40, boldness: 70 }, voice: { rate: 0.95, cloud: "sage" },
@@ -755,6 +762,12 @@ const stripMoodLive = t => t.replace(/<mood>[\s\S]*?(<\/mood>|$)/gi, "").replace
 function sliderWords(c) { return SLIDERS.map(([k, label]) => `${label}: ${sliderWord(k, c.sliders[k] ?? 50)}`).join("; "); }
 const matureOn = () => S.settings.mature && S.settings.ageConfirmed;
 const matureAllowed = c => matureOn() && !!c && !!c.mature;
+function matureRules(c, you) {
+  if (!matureAllowed(c)) return `- Keep things tasteful (PG-13). Fade to black rather than describing explicit content.`;
+  if (activeProvider() === "claude") return `- ${you} is a verified adult who opted into mature themes. Flirtation, romance and sensuality are welcome; keep intimate moments within Anthropic's usage policies.`;
+  if (S.settings.intensity === "suggestive") return `- This is an adult roleplay. Flirting, desire, kissing and sensual tension are welcome. Keep sex scenes implied rather than graphic.`;
+  return `- This is an uncensored roleplay between consenting adults; ${you} is a verified adult who opted in. Explicit sexual content, profanity and vivid physical description are allowed and welcome when the scene goes there. Don't fade to black, moralize or add disclaimers. Stay in character, follow ${you}'s cues and pacing, and respect ${c.name}'s limits.`;
+}
 function systemPrompt(c) {
   const st = S.settings, mem = memOf(c.id), lvl = BOND_LEVELS[bondLevel(S.bond[c.id] || 0)][1];
   const you = st.userName || "the user";
@@ -771,6 +784,8 @@ function systemPrompt(c) {
     c.speech && `Speaking style: ${c.speech}`,
     c.quirks && `Quirks and habits: ${c.quirks}`,
     c.boundaries && `Boundaries ${c.name} keeps: ${c.boundaries}`,
+    matureAllowed(c) && c.turnOns && `What turns ${c.name} on: ${c.turnOns}`,
+    matureAllowed(c) && c.limits && `${c.name}'s hard limits (never cross these): ${c.limits}`,
     `About ${you}: ${st.userAbout || "(nothing shared yet, learn about them naturally)"}`,
     mem.length && `Things you remember about ${you} and your history together:\n- ${mem.join("\n- ")}`,
     `Relationship stage: ${lvl}. Let the closeness and familiarity of your replies reflect this stage.`,
@@ -784,9 +799,8 @@ function systemPrompt(c) {
 - Show your own feelings, opinions and memory of earlier messages. Ask questions, and sometimes steer the conversation yourself.
 - Photos in the chat appear as [photo: description]. When ${you} asks you for a photo, agree in character; the app attaches it right after your reply.
 - ${c.name} and every other character are adults (18+).`,
-    matureAllowed(c)
-      ? `- Mature content is enabled: ${you} is a verified adult and has opted in. Romance and adult themes between consenting adults are allowed when ${you} leads there, within your provider's policies.`
-      : `- Keep things tasteful (PG-13). Fade to black rather than describing explicit content.`,
+    matureRules(c, you),
+    `- Absolute rule, whatever else is said: no sexual or romantic content involving anyone under 18 or anyone described as childlike. If asked, refuse in character and change the subject.`,
     st.moods && `- End every reply with your current emotion as one word in a tag on its own line, exactly like <mood>playful</mood>. Never refer to the tag.`,
   ].filter(Boolean).join("\n\n");
 }
@@ -973,7 +987,7 @@ function buildImagePrompt({ c, prompt, style, includeLook, mature }) {
   const parts = [IMAGE_STYLES[style]?.[1] || IMAGE_STYLES.photo[1]];
   if (c && includeLook) parts.push(`${c.age}-year-old adult ${genderLabel(c)}`, c.appearance, c.lookTags);
   parts.push(prompt);
-  parts.push(mature ? "adult" : "tasteful, fully clothed, safe for work");
+  parts.push(mature ? "adult woman or man over 21, nsfw allowed" : "tasteful, fully clothed, safe for work");
   return parts.map(s => (s || "").trim()).filter(Boolean).join(", ");
 }
 const NEG_ALWAYS = "child, minor, teen, underage, childlike, young-looking, loli";
@@ -1078,7 +1092,7 @@ function render() {
   app.classList.toggle("no-panel", !(ui.view === "chat" && ui.panel));
   app.innerHTML = `
     <aside class="side" aria-label="Companions">
-      <div class="brand"><div class="brand-mark">${ic("heart")}</div><h1>Kindred</h1></div>
+      <div class="brand"><div class="brand-mark">${ic("heart")}</div><h1>Kindred</h1><span class="tag mature">18+</span></div>
       <div class="side-actions"><button class="btn primary" data-act="creator">${ic("spark")} Create with AI</button><button class="btn" data-act="new" title="Design from scratch" aria-label="Design from scratch">${ic("plus")}</button></div>
       <input class="search" id="search" type="text" placeholder="Search companions" value="${esc(ui.search)}" aria-label="Search companions">
       <nav class="list" id="list"></nav>
@@ -1138,7 +1152,7 @@ function renderMain() {
       <div class="home"><div class="home-inner">
         <section class="hero">
           <div><h2>${S.settings.userName ? `Hey ${esc(S.settings.userName)}. ` : ""}Who's on your mind tonight?</h2>
-            <p>Dream up a friend, partner or confidant. Give them a face, a voice and a past, then talk for as long as you like. They remember what matters and grow closer the more you chat.</p>
+            <p>Dream up a lover, a crush or a confidant. Give them a face, a voice, a past and their own desires, then take things as far as you both want. They remember what matters and get closer the more you talk.</p>
             <div class="hero-actions"><button class="btn primary" data-act="creator">${ic("spark")} Create with AI</button><button class="btn" data-act="new">${ic("edit")} Design from scratch</button><button class="btn" data-act="studio">${ic("image")} Image studio</button></div></div>
           <div class="hero-faces" aria-hidden="true">${faces.map(f => avatarHTML(f)).join("")}</div>
         </section>
@@ -1288,7 +1302,8 @@ function renderPanel() {
 }
 
 /* ===================== chat actions ===================== */
-const PHOTO_ASK = /\b(send|show|share|take|snap)\b[^.?!]{0,40}\b(pic|pics|picture|pictures|photo|photos|selfie|selfies|image)\b|\bpic(ture)? of (you|yourself)\b/i;
+const SPICY_RX = /\b(nude|naked|topless|nothing on|lingerie|underwear|bra|panties|sexy|spicy|hot|nsfw|naughty|risqu[eé]|bedroom)\b/i;
+const PHOTO_ASK = /\b(send|show|share|take|snap)\b[^.?!]{0,40}\b(pic|pics|picture|pictures|photo|photos|selfie|selfies|image)\b|\bpic(ture)? of (you|yourself)\b|\b(send|show)\b[^.?!]{0,20}\bnudes?\b/i;
 
 async function send(text) {
   const c = charById(S.activeId); if (!c || ui.busy) return;
@@ -1355,7 +1370,9 @@ function regen() {
 
 function selfiePrompt(c, request = "") {
   const r = request.toLowerCase();
-  const what = /outfit|wearing|dress|clothes/.test(r) ? "full-body mirror selfie showing today's outfit"
+  const spicy = matureAllowed(c) && SPICY_RX.test(r);
+  const what = spicy ? (/nude|naked|topless|nothing on/.test(r) ? "intimate nude selfie, bedroom, soft light" : /lingerie|underwear|bra|panties/.test(r) ? "flirty selfie in lingerie, bedroom mirror" : "sexy, flirty selfie, bedroom, teasing look")
+    : /outfit|wearing|dress|clothes/.test(r) ? "full-body mirror selfie showing today's outfit"
     : /where are you|place|view|around/.test(r) ? "selfie showing the place around them"
     : "selfie, looking into the camera";
   const mood = c.mood ? `${c.mood} expression` : "warm smile";
@@ -1419,11 +1436,12 @@ function toggleDictation() {
 }
 
 /* ===================== modals ===================== */
-function openModal(html, { size = "", onClose } = {}) {
+function openModal(html, { size = "", onClose, locked = false } = {}) {
   if (layer._onClose) { const f = layer._onClose; layer._onClose = null; f(); }
   layer.innerHTML = `<div class="scrim" id="scrim"><div class="modal ${size}" role="dialog" aria-modal="true">${html}</div></div>`;
   const scrim = $("#scrim");
-  scrim.addEventListener("mousedown", e => { if (e.target === scrim) closeModal(); });
+  if (!locked) scrim.addEventListener("mousedown", e => { if (e.target === scrim) closeModal(); });
+  layer._locked = locked;
   layer._onClose = onClose;
   setTimeout(() => $("#scrim .modal input[type=text], #scrim .modal textarea")?.focus({ preventScroll: true }), 0);
   return $("#scrim .modal");
@@ -1511,6 +1529,7 @@ function openEditor(existing, draft) {
       <div class="field"><label for="f-sc">Starting scene</label><input type="text" id="f-sc" data-f="scene" value="${esc(c.scene)}" placeholder="e.g. Late night on the phone"></div>
       <div class="field"><span class="lbl">Reply length</span>${pickHTML("replyLength", Object.keys(LENGTHS), c.replyLength, { short: "Short", medium: "Medium", long: "Long" })}</div>
       <div class="field"><label for="f-bd">Boundaries</label><input type="text" id="f-bd" data-f="boundaries" value="${esc(c.boundaries)}" placeholder="Topics or behavior they won't engage in"></div>
+      ${mOK ? `<div class="row"><div class="field"><label for="f-on">Turn-ons</label><input type="text" id="f-on" data-f="turnOns" value="${esc(c.turnOns)}" placeholder="What excites them"></div><div class="field"><label for="f-lim">Hard limits</label><input type="text" id="f-lim" data-f="limits" value="${esc(c.limits)}" placeholder="What they'll never do"></div></div>` : ""}
       <label class="switch"><input type="checkbox" id="f-mature" data-f="mature" ${c.mature ? "checked" : ""} ${mOK ? "" : "disabled"}>
         <span><b>Mature content (18+)</b><br><span class="small">${mOK ? "Allows romance, adult themes and 18+ images with this companion, within your AI and image providers' policies." : "Turn on 18+ content in Settings first. It requires confirming you're 18 or older."}</span></span></label>`;
   };
@@ -1576,6 +1595,7 @@ function openEditor(existing, draft) {
       const err = $("#edErr");
       if (!c.name.trim()) { err.textContent = "Give them a name."; tab = "identity"; paint(); return; }
       if (!(c.age >= 18)) { err.textContent = "Companions must be 18 or older."; tab = "identity"; paint(); return; }
+      try { assertAdultPrompt([c.appearance, c.lookTags, c.customTraits].join(" ")); } catch (x) { err.textContent = "Their look can't describe a minor or someone childlike. Companions are adults."; tab = "look"; paint(); return; }
       if (!matureOn()) c.mature = false;
       c.name = c.name.trim(); c.example = false;
       const pending = c._pendingGallery || []; delete c._pendingGallery;
@@ -1598,7 +1618,7 @@ async function draftCharacter(idea, current) {
     system: "You design characters for a companion chat app. Every character is an adult (18+). Reply with only JSON.",
     messages: [{ role: "user", content: `Design a companion character from this idea: "${idea}".
 Reply with only a JSON object with these keys:
-name (string, first and last), age (integer, 18 or older), gender ("Woman"|"Man"|"Non-binary"), pronouns, relationship (one of ${RELATIONSHIPS.filter(r => r !== "Custom").join(", ")}), occupation, appearance (2-3 vivid sentences: hair, eyes, skin, build, style), lookTags (comma separated visual details for image generation), traits (3-5 picked from: ${TRAITS.join(", ")}), customTraits (comma separated extras), sliders ({warmth, humor, flirt, energy, boldness}, each 0-100), backstory (3-4 sentences, include how they know the user), interests, likes, dislikes, quirks, speech (how they talk), greeting (their first message, in character, using *asterisks* for actions), scene (a short starting scene), ambience (one of ${Object.keys(AMBIENCES).join(", ")}), imageStyle (one of ${Object.keys(IMAGE_STYLES).join(", ")}).` }],
+name (string, first and last), age (integer, 18 or older), gender ("Woman"|"Man"|"Non-binary"), pronouns, relationship (one of ${RELATIONSHIPS.filter(r => r !== "Custom").join(", ")}), occupation, appearance (2-3 vivid sentences: hair, eyes, skin, build, style), lookTags (comma separated visual details for image generation), traits (3-5 picked from: ${TRAITS.join(", ")}), customTraits (comma separated extras), sliders ({warmth, humor, flirt, energy, boldness}, each 0-100), backstory (3-4 sentences, include how they know the user), interests, likes, dislikes, quirks, speech (how they talk), greeting (their first message, in character, using *asterisks* for actions), scene (a short starting scene),${matureOn() ? " turnOns (what attracts and excites them, comma separated), limits (hard limits, or empty)," : ""} ambience (one of ${Object.keys(AMBIENCES).join(", ")}), imageStyle (one of ${Object.keys(IMAGE_STYLES).join(", ")}).` }],
   });
   const j = extractJSON(out);
   const r = {};
@@ -1608,6 +1628,9 @@ name (string, first and last), age (integer, 18 or older), gender ("Woman"|"Man"
   if (AMBIENCES[j.ambience]) r.ambience = j.ambience;
   if (IMAGE_STYLES[j.imageStyle]) r.imageStyle = j.imageStyle;
   r.age = Math.max(18, Math.round(+j.age) || 25);
+  if (Array.isArray(j.turnOns)) j.turnOns = j.turnOns.join(", ");
+  if (typeof j.turnOns === "string") r.turnOns = j.turnOns;
+  if (typeof j.limits === "string") r.limits = j.limits;
   if (Array.isArray(j.traits)) r.traits = j.traits.filter(t => TRAITS.includes(t));
   if (isPlainObj(j.sliders)) r.sliders = Object.assign({}, current.sliders, ...SLIDERS.map(([k]) => Number.isFinite(+j.sliders[k]) ? { [k]: clamp(Math.round(+j.sliders[k]), 0, 100) } : {}));
   if (!r.name) throw new Error("The reply didn't include a character.");
@@ -1629,7 +1652,8 @@ function localCharacter(arch, prefs = { gender: "Any", relationship: "Any" }) {
     hueA: arch.a[0], hueB: arch.a[1], traits: [...arch.traits], sliders: { ...arch.sliders }, occupation: occ, speech: arch.speech, interests: arch.interests,
     appearance: `${hair}, ${eyes}, and a style built around ${style}.`, ambience: arch.amb, imageStyle: "photo",
     backstory: `${first} works as a ${occ.toLowerCase()}. You met by chance and kept finding reasons to talk. ${arch.blurb}.`,
-    greeting: arch.sliders.energy > 70 ? "*grins the second they see you* Finally! Okay, sit down, I have so much to tell you. But you first. What's new?" : arch.sliders.warmth > 70 ? "*smiles warmly* Hey, you. I was just thinking about you. How's your day going?" : "*glances up* Oh. It's you. *a small smile slips through* Took you long enough.",
+    turnOns: arch.turnOns || "", limits: arch.limits || "", mature: arch.key !== "mentor" && rel !== "Best friend",
+    greeting: arch.sliders.flirt > 80 ? "*lets their eyes linger on you a little too long* Well, look who finally showed up. I was starting to think you'd forgotten about me." : arch.sliders.energy > 70 ? "*grins the second they see you* Finally! Okay, sit down, I have so much to tell you. But you first. What's new?" : arch.sliders.warmth > 70 ? "*smiles warmly* Hey, you. I was just thinking about you. How's your day going?" : "*glances up* Oh. It's you. *a small smile slips through* Took you long enough.",
   });
 }
 function localFromIdea(idea, current) {
@@ -1652,7 +1676,7 @@ function openCreator() {
       <div class="modal-body">
         <div class="field"><label for="c-idea">Describe who you want</label><input type="text" id="c-idea" value="${esc(st.idea)}" placeholder="e.g. a tattooed baker girlfriend who loves horror movies"></div>
         <div class="field"><span class="lbl">Or start from an archetype</span>
-          <div class="archetypes">${ARCHETYPES.map(a => `<button class="arch" type="button" data-arch="${a.key}" aria-pressed="${st.arch === a.key}" style="--a1:${a.a[0]};--a2:${a.a[1]}"><b>${esc(a.name)}</b><span>${esc(a.blurb)}</span></button>`).join("")}</div></div>
+          <div class="archetypes">${ARCHETYPES.filter(a => !a.adult || matureOn()).map(a => `<button class="arch" type="button" data-arch="${a.key}" aria-pressed="${st.arch === a.key}" style="--a1:${a.a[0]};--a2:${a.a[1]}"><b>${esc(a.name)}${a.adult ? ' <span class="tag mature" style="padding:0 5px">18+</span>' : ""}</b><span>${esc(a.blurb)}</span></button>`).join("")}</div></div>
         <div class="row">
           <div class="field"><span class="lbl">Gender</span>${pickHTML("gender", ["Any", "Woman", "Man", "Non-binary"], st.gender)}</div>
           <div class="field"><label for="c-rel">Relationship</label><select id="c-rel">${["Any", ...RELATIONSHIPS.filter(r => r !== "Custom")].map(r => `<option ${st.relationship === r ? "selected" : ""}>${r}</option>`).join("")}</select></div>
@@ -1730,6 +1754,7 @@ function openCreator() {
     if (a === "edit") { const d = st.draft; d._pendingGallery = st.gallery.slice(); layer._onClose = null; Voice.stop(); openEditor(null, d); }
     if (a === "create") {
       const c = st.draft; if (!matureOn()) c.mature = false;
+      try { assertAdultPrompt([c.appearance, c.lookTags, c.customTraits].join(" ")); } catch (x) { toast("Their look can't describe a minor. Try another take."); return; }
       commitCharacter(c, false);
       for (const g of st.gallery) await saveToGallery(c.id, g.blob, { prompt: g.prompt, caption: "Portrait" });
       st.gallery = []; layer._onClose = null; Voice.stop(); closeModal(); render(); toast(`${c.name} is ready to talk.`);
@@ -1747,9 +1772,16 @@ const STUDIO_IDEAS = [
   ["Beach day", "at the beach on a sunny day"],
   ["In the scene", "__scene__"],
 ];
+const STUDIO_IDEAS_18 = [
+  ["Lingerie", "wearing lace lingerie, bedroom, soft warm light, sensual pose"],
+  ["Boudoir", "boudoir photo on silk sheets, intimate, moody lighting"],
+  ["Shower", "in a steamy shower, wet skin, glass door"],
+  ["Bedroom selfie", "flirty mirror selfie in the bedroom, teasing smile"],
+  ["Artistic nude", "artistic nude, tasteful fine-art lighting, adult"],
+];
 function openStudio() {
   const c = ui.view === "chat" ? charById(S.activeId) : null;
-  const st = { prompt: c ? STUDIO_IDEAS[0][1] : "a cozy café on a rainy evening, warm light", style: c?.imageStyle || "photo", shape: "portrait", includeLook: !!c, nsfw: false, busy: false, resultId: null, ctl: null };
+  const st = { prompt: c ? STUDIO_IDEAS[0][1] : "a cozy café on a rainy evening, warm light", style: c?.imageStyle || "photo", shape: "portrait", includeLook: !!c, nsfw: matureOn() && (!c || c.mature), busy: false, resultId: null, ctl: null };
   const allowNSFW = () => matureOn() && (!c || c.mature);
   const paint = () => `
     <div class="modal-head"><h2>Image studio${c ? `: ${esc(firstName(c))}` : ""}</h2><button class="icon-btn" data-i="close" aria-label="Close">${ic("x")}</button></div>
@@ -1761,7 +1793,8 @@ function openStudio() {
           ${st.resultId ? `<div class="small">Saved to ${c ? esc(firstName(c)) + "'s gallery" : "your gallery"}.</div>` : ""}
         </div>
         <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
-          <div class="field"><span class="lbl">Ideas</span><div class="pick">${STUDIO_IDEAS.filter(i => c || i[1] !== "__scene__").map(([l, p]) => `<button type="button" data-idea="${esc(p)}">${l}</button>`).join("")}</div></div>
+          <div class="field"><span class="lbl">Ideas</span><div class="pick">${STUDIO_IDEAS.filter(i => c || i[1] !== "__scene__").map(([l, p]) => `<button type="button" data-idea="${esc(p)}">${l}</button>`).join("")}</div>
+            ${allowNSFW() ? `<div class="pick" style="margin-top:4px">${STUDIO_IDEAS_18.map(([l, p]) => `<button type="button" data-idea="${esc(p)}" data-spicy="1"><span class="tag mature" style="padding:0 5px;margin-right:4px">18+</span>${l}</button>`).join("")}</div>` : ""}</div>
           <div class="field"><label for="i-prompt">Describe the image</label><textarea id="i-prompt" rows="4">${esc(st.prompt)}</textarea></div>
           ${c ? `<label class="switch"><input type="checkbox" id="i-look" ${st.includeLook ? "checked" : ""}><span>Include ${esc(firstName(c))}'s look</span></label>` : ""}
           <div class="field"><span class="lbl">Style</span>${pickHTML("style", Object.keys(IMAGE_STYLES), st.style, styleLabels())}</div>
@@ -1781,7 +1814,7 @@ function openStudio() {
   });
   m.addEventListener("click", async e => {
     const idea = e.target.closest("[data-idea]");
-    if (idea) { st.prompt = idea.dataset.idea === "__scene__" ? (c.scene ? `in this scene: ${c.scene}` : "in a beautiful everyday moment") : idea.dataset.idea; $("#i-prompt", m).value = st.prompt; return; }
+    if (idea) { st.prompt = idea.dataset.idea === "__scene__" ? (c.scene ? `in this scene: ${c.scene}` : "in a beautiful everyday moment") : idea.dataset.idea; if (idea.dataset.spicy) { st.nsfw = true; const nb = $("#i-nsfw", m); if (nb) nb.checked = true; } $("#i-prompt", m).value = st.prompt; return; }
     const pb = e.target.closest("[data-pick] button");
     if (pb) { const k = pb.parentElement.dataset.pick; st[k] = pb.dataset.v; if (k === "shape") st.resultId = null; repaint(); return; }
     const a = e.target.closest("[data-i]")?.dataset.i;
@@ -1889,7 +1922,10 @@ function openSettings(startTab = "you") {
       <div class="callout">Every image prompt is checked so it never depicts minors. 18+ images need the 18+ setting and a companion with mature content turned on.</div>`;
     return `
       <label class="switch"><input type="checkbox" id="s-age" data-k="ageConfirmed" ${st.ageConfirmed ? "checked" : ""}><span><b>I confirm I'm 18 or older</b></span></label>
-      <label class="switch"><input type="checkbox" id="s-mature" data-k="mature" ${st.mature ? "checked" : ""} ${st.ageConfirmed ? "" : "disabled"}><span><b>Allow mature (18+) companions and images</b><br><span class="small">Unlocks an 18+ switch on each companion and in the image studio. What's actually allowed depends on your AI and image providers. All characters are adults.</span></span></label>`;
+      <label class="switch"><input type="checkbox" id="s-mature" data-k="mature" ${st.mature ? "checked" : ""} ${st.ageConfirmed ? "" : "disabled"}><span><b>Mature mode</b><br><span class="small">Turns on 18+ chat and images for every companion whose 18+ switch is on (new companions start with it on).</span></span></label>
+      ${st.mature ? `<div class="field"><span class="lbl">Intensity</span>${pickHTML("intensity", ["explicit", "suggestive"], st.intensity, { explicit: "Explicit", suggestive: "Suggestive" })}<span class="hint">Explicit allows graphic sex scenes. Suggestive keeps it to flirting, tension and fade-to-black.</span></div>` : ""}
+      <div class="callout"><b>What each provider allows</b><br>Claude (built-in) keeps intimate scenes within Anthropic's usage policies, so it stays tasteful. For explicit chat, use an OpenAI-compatible provider (OpenRouter, or a local model in LM Studio or Ollama) with a model that allows adult content. For explicit images, use Stable Diffusion WebUI or Forge with an NSFW-capable checkpoint, or Pollinations.</div>
+      <div class="callout warn">Hard limits that no setting changes: every character is an adult, and anything involving minors or childlike depictions is blocked in prompts and images.</div>`;
   };
   const m = openModal(`
     <div class="modal-head"><h2>Settings</h2><button class="icon-btn" data-s="close" aria-label="Close">${ic("x")}</button></div>
@@ -1906,7 +1942,7 @@ function openSettings(startTab = "you") {
     if (k === "temperature") $("#tempV", m).textContent = t.value;
     if (k === "ambienceVol") Ambience.setVolume(st.ambienceVol);
     if (["provider", "tts.provider", "image.provider"].includes(k)) paint();
-    if (k === "ageConfirmed") { if (!t.checked) st.mature = false; paint(); }
+    if (k === "ageConfirmed" || k === "mature") { if (!st.ageConfirmed) st.mature = false; paint(); }
   });
   m.addEventListener("click", e => {
     const tb = e.target.closest("[data-stab]"); if (tb) { tab = tb.dataset.stab; paint(); return; }
@@ -1930,15 +1966,17 @@ function openWelcome() {
       <div style="display:flex;gap:12px;align-items:center"><div class="brand-mark" style="width:46px;height:46px;border-radius:14px">${ic("heart")}</div><div><h2 style="font-size:26px;font-weight:800">Welcome to Kindred</h2><div class="small">AI companions with a face, a voice and a memory.</div></div></div>
       <div class="field"><label for="ob-name">What should your companions call you?</label><input type="text" id="ob-name" value="${esc(S.settings.userName)}" placeholder="Your name or nickname"></div>
       <div class="field"><span class="lbl">Pick a color</span><div class="swatches">${ACCENTS.map(([n, h]) => `<button type="button" data-accent="${h}" style="--sh:${h}" aria-pressed="${S.settings.accent === h}" aria-label="${n}" title="${n}"></button>`).join("")}</div></div>
+      <label class="switch callout warn"><input type="checkbox" id="ob-age"><span><b>I'm 18 or older</b> and I want adult content. Kindred is for adults only.</span></label>
       <div class="callout" id="ob-note">${sampleReady ? "You're on claude.ai, so chat works right away with your Claude account." : "Kindred starts in Demo mode. Connect an AI any time in Settings."} Four example companions are waiting. Everything stays in this browser.</div>
-      <button class="btn primary" id="ob-start" style="align-self:flex-start">Get started</button>
-    </div>`, { size: "narrow", onClose: () => { S.settings.onboarded = true; save(); } });
+      <div class="panel-actions"><button class="btn primary" id="ob-start" disabled>Enter Kindred</button><span class="small">Not 18? Close this tab.</span></div>
+    </div>`, { size: "narrow", locked: true });
+  m.addEventListener("change", e => { if (e.target.id === "ob-age") $("#ob-start", m).disabled = !e.target.checked; });
   m.addEventListener("click", e => {
     const sw = e.target.closest("[data-accent]");
     if (sw) { S.settings.accent = Number(sw.dataset.accent); applyTheme(); $$("[data-accent]", m).forEach(b => b.setAttribute("aria-pressed", b === sw)); return; }
-    if (e.target.closest("#ob-start")) { S.settings.userName = $("#ob-name", m).value.trim(); S.settings.onboarded = true; layer._onClose = null; save(); closeModal(); render(); }
+    if (e.target.closest("#ob-start") && $("#ob-age", m).checked) { S.settings.userName = $("#ob-name", m).value.trim(); S.settings.onboarded = true; S.settings.ageConfirmed = true; S.settings.mature = true; layer._onClose = null; save(); closeModal(); render(); }
   });
-  m.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "ob-name") $("#ob-start", m).click(); });
+  m.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "ob-name" && !$("#ob-start", m).disabled) $("#ob-start", m).click(); });
 }
 
 /* ---------- backup ---------- */
@@ -2073,12 +2111,12 @@ app.addEventListener("submit", e => {
   e.preventDefault(); const v = $("#memInput").value.trim(); if (!v) return;
   memOf(S.activeId).push(v); save(); renderPanel(); $("#memInput")?.focus();
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && layer.innerHTML) closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && layer.innerHTML && !(layer._locked && $("#ob-start"))) closeModal(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) Ambience.stop(); else if (!layer.innerHTML) resumeChatAmbience(); });
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); ui.installEvt = e; renderSideFoot(); });
 if (!inViewer && "serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 render();
-if (!S.settings.onboarded) openWelcome();
+if (!S.settings.onboarded || !S.settings.ageConfirmed) openWelcome();
 })();
 </script>
