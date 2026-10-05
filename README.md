@@ -41,7 +41,8 @@ Design AI companions (friends, girlfriends, boyfriends, partners, mentors, or an
 | Chat provider | Where it works | Notes |
 | --- | --- | --- |
 | Claude (built-in) | The claude.ai artifact | Uses your Claude account and follows Anthropic's usage policies. |
-| OpenAI-compatible | Hosted or local | OpenRouter, OpenAI, LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), and others. |
+| OpenRouter | Hosted or local | Click **Connect OpenRouter** in Settings › AI chat (sign in, the key comes back automatically) or paste a key from openrouter.ai/keys. Browse and search every model with prices. |
+| OpenAI-compatible | Hosted or local | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, and others. |
 | Anthropic API | Hosted or local | Your own key. |
 | Demo mode | Anywhere | Canned replies, for trying the interface. |
 
@@ -60,6 +61,7 @@ Open the printed address, then use the browser's "Install" option or the button 
 
 ```sh
 node scripts/build.mjs && node scripts/smoke-test.mjs   # headless Chromium, Demo mode, screenshots in test-output/
+node scripts/openrouter-test.mjs                        # OpenRouter sign-in, model list and chat against a simulated openrouter.ai
 ```
 
 ## Project layout

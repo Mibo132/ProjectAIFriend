@@ -275,6 +275,13 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
 .studio-canvas.landscape { aspect-ratio: 4 / 3; } .studio-canvas.square { aspect-ratio: 1; }
 .shimmer { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, hsl(var(--accent-h) 80% 70% / .3) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 1.4s linear infinite; }
 @keyframes shimmer { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.or-list { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.or-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 8px 12px; min-width: 0; }
+.or-list button:last-child { border-bottom: 0; }
+.or-list button:hover { background: var(--surface-2); }
+.or-list button[aria-selected="true"] { background: var(--accent-soft); }
+.or-list b { font-size: 14px; }
+.or-list span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .lightbox img { width: 100%; max-height: 64vh; object-fit: contain; border-radius: 14px; background: var(--surface-2); }
 
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 40; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
@@ -363,8 +370,9 @@ const ICONS = {
 };
 const ic = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const BUILD_LOG = [
+  ["0.4.0", "OpenRouter built in: one-click Connect (sign in and the key comes back automatically), a searchable model list with prices and context sizes, and OpenRouter picked automatically once a key is saved."],
   ["0.3.0", "Adults-only: 18+ entry gate, mature mode on by default, explicit or suggestive intensity, turn-ons and limits per companion, spicy archetypes, 18+ image ideas and photo requests, plus adult-only checks on every companion and image."],
   ["0.2.0", "Look and sound update: accent colors and themes, chat backgrounds, animated messages, moods. Voices that read replies aloud, voice input, chimes and scene ambience. AI Creator with archetypes and portraits. Image studio and per-companion galleries; companions send photos when you ask. Installable as an app with offline support."],
   ["0.1.0", "First build: companion designer, chat with streaming replies, alternate replies, memories, bond levels, AI-drafted characters, four AI providers, mature-content gate, import and export."],
@@ -433,7 +441,8 @@ const ARCHETYPES = [
 const STORE_KEY = "kindred.v1";
 const DEFAULT_SETTINGS = {
   provider: "auto", userName: "", userAbout: "", mature: false, ageConfirmed: false, intensity: "explicit",
-  openai: { baseUrl: "https://openrouter.ai/api/v1", apiKey: "", model: "" },
+  openrouter: { apiKey: "", model: "openrouter/auto" },
+  openai: { baseUrl: "http://localhost:1234/v1", apiKey: "", model: "" },
   anthropic: { apiKey: "", model: "claude-sonnet-5-5" },
   temperature: 0.9, maxTokens: 600, historyLimit: 40,
   theme: "system", accent: 350, sounds: true, moods: true,
@@ -511,6 +520,8 @@ function load() {
       const s = JSON.parse(raw);
       s.settings = mergeDeep(DEFAULT_SETTINGS, s.settings || {});
       if (s.v !== 2) s.settings.onboarded = true; // people coming from 0.1 skip the welcome
+      const o = s.settings.openai;
+      if (/openrouter\.ai/.test(o.baseUrl) && o.apiKey && !s.settings.openrouter.apiKey) { s.settings.openrouter = { apiKey: o.apiKey, model: o.model || "openrouter/auto" }; if (s.settings.provider === "openai") s.settings.provider = "openrouter"; }
       s.characters = (s.characters || []).map(c => mergeDeep(blankCharacter(), c));
       s.chats ||= {}; s.memories ||= {}; s.bond ||= {}; s.gallery ||= {}; s.v = 2;
       return s;
@@ -818,11 +829,12 @@ function activeProvider() {
   const p = S.settings.provider;
   if (p !== "auto") return p;
   if (sampleReady) return "claude";
+  if (S.settings.openrouter.apiKey) return "openrouter";
   if (S.settings.anthropic.apiKey) return "anthropic";
   if ((S.settings.openai.apiKey || /localhost|127\.0\.0\.1/.test(S.settings.openai.baseUrl)) && S.settings.openai.model) return "openai";
   return "demo";
 }
-const PROVIDER_NAMES = { claude: "Claude (built-in)", openai: "OpenAI-compatible", anthropic: "Anthropic API", demo: "Demo mode" };
+const PROVIDER_NAMES = { claude: "Claude (built-in)", openrouter: "OpenRouter", openai: "OpenAI-compatible", anthropic: "Anthropic API", demo: "Demo mode" };
 
 function normalizeTurns(msgs) {
   const out = [];
@@ -912,26 +924,83 @@ async function generate({ system, messages, onText = () => {}, signal, maxTokens
     return text;
   }
 
+  if (prov === "openrouter") {
+    const o = st.openrouter;
+    if (!o.apiKey) throw new Error("Connect OpenRouter or paste your OpenRouter key in Settings, under AI chat.");
+    const extra = { "X-Title": "Kindred" };
+    if (/^https?:$/.test(location.protocol)) extra["HTTP-Referer"] = location.origin;
+    return chatCompletions({ url: OPENROUTER + "/chat/completions", key: o.apiKey, model: o.model || "openrouter/auto", extra, system, turns, onText, signal, maxTokens, temperature });
+  }
+
   if (prov === "openai") {
     const o = st.openai;
     if (!o.model) throw new Error("Set a model name for your OpenAI-compatible provider in Settings.");
-    const headers = { "content-type": "application/json" };
-    if (o.apiKey) headers.authorization = "Bearer " + o.apiKey;
-    let res;
-    try {
-      res = await fetch(o.baseUrl.replace(/\/+$/, "") + "/chat/completions", {
-        method: "POST", signal, headers,
-        body: JSON.stringify({ model: o.model, temperature, max_tokens: maxTokens, stream: true, messages: [{ role: "system", content: system }, ...turns] }),
-      });
-    } catch (e) { throw netError(e); }
-    if (!res.ok) throw await httpError(res);
-    let text = "";
-    await readSSE(res, d => { const t = d.choices?.[0]?.delta?.content; if (t) { text += t; onText(text); } });
-    return text;
+    return chatCompletions({ url: o.baseUrl.replace(/\/+$/, "") + "/chat/completions", key: o.apiKey, model: o.model, system, turns, onText, signal, maxTokens, temperature });
   }
 
   return demoGenerate({ turns, onText, signal });
 }
+
+async function chatCompletions({ url, key, model, extra = {}, system, turns, onText, signal, maxTokens, temperature }) {
+  const headers = { "content-type": "application/json", ...extra };
+  if (key) headers.authorization = "Bearer " + key;
+  let res;
+  try {
+    res = await fetch(url, { method: "POST", signal, headers,
+      body: JSON.stringify({ model, temperature, max_tokens: maxTokens, stream: true, messages: [{ role: "system", content: system }, ...turns] }) });
+  } catch (e) { throw netError(e); }
+  if (!res.ok) throw await httpError(res);
+  let text = "", streamErr = null;
+  await readSSE(res, d => {
+    if (d.error) streamErr = new Error(d.error.message || "The stream stopped with an error.");
+    const t = d.choices?.[0]?.delta?.content; if (t) { text += t; onText(text); }
+  });
+  if (streamErr && !text) throw streamErr;
+  return text;
+}
+
+/* ===================== OpenRouter: sign-in (PKCE) and model list ===================== */
+const OPENROUTER = "https://openrouter.ai/api/v1";
+const OR_VERIFIER = "kindred.openrouter.verifier";
+const b64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const canOAuth = () => !inViewer && /^https?:$/.test(location.protocol) && !!(window.crypto && crypto.subtle);
+async function connectOpenRouter() {
+  if (!canOAuth()) { toast("Connecting needs the hosted or local version of Kindred. Paste a key from openrouter.ai/keys instead."); return; }
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  try { sessionStorage.setItem(OR_VERIFIER, verifier); } catch (e) { toast("This browser blocked storage, so sign-in can't finish. Paste a key instead."); return; }
+  const callback = location.origin + location.pathname;
+  location.href = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callback)}&code_challenge=${challenge}&code_challenge_method=S256`;
+}
+async function finishOpenRouterAuth() {
+  const code = new URLSearchParams(location.search).get("code");
+  let verifier = null; try { verifier = sessionStorage.getItem(OR_VERIFIER); } catch (e) { /* none */ }
+  if (!code || !verifier) return;
+  history.replaceState(null, "", location.pathname + location.hash);
+  try {
+    const res = await fetch(OPENROUTER + "/auth/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: "S256" }) });
+    if (!res.ok) throw await httpError(res);
+    const j = await res.json();
+    if (!j.key) throw new Error("OpenRouter didn't return a key.");
+    S.settings.openrouter.apiKey = j.key; S.settings.provider = "openrouter"; save();
+    try { sessionStorage.removeItem(OR_VERIFIER); } catch (e) { /* fine */ }
+    render(); openSettings("ai"); toast("OpenRouter connected. Pick a model, then save.");
+  } catch (e) { toast("Couldn't connect OpenRouter: " + (e.message || e)); }
+}
+let orModels = null;
+async function loadOpenRouterModels() {
+  let res;
+  try { res = await fetch(OPENROUTER + "/models"); } catch (e) { throw netError(e); }
+  if (!res.ok) throw await httpError(res);
+  const j = await res.json();
+  orModels = (j.data || []).filter(m => {
+    const out = m.architecture?.output_modalities || [];
+    return out.length ? out.includes("text") : !/->(image|audio)$/.test(m.architecture?.modality || "");
+  }).map(m => ({ id: m.id, name: m.name || m.id, ctx: m.context_length || 0, inP: Number(m.pricing?.prompt || 0) * 1e6, outP: Number(m.pricing?.completion || 0) * 1e6 }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return orModels;
+}
+const priceLabel = m => m.inP === 0 && m.outP === 0 ? "free" : `$${m.inP.toFixed(2)} in · $${m.outP.toFixed(2)} out per 1M`;
 
 /* Offline demo: personality-flavored canned replies, streamed, so everything can be tried with no AI at all. */
 async function demoGenerate({ turns, onText, signal }) {
@@ -1156,7 +1225,7 @@ function renderMain() {
             <div class="hero-actions"><button class="btn primary" data-act="creator">${ic("spark")} Create with AI</button><button class="btn" data-act="new">${ic("edit")} Design from scratch</button><button class="btn" data-act="studio">${ic("image")} Image studio</button></div></div>
           <div class="hero-faces" aria-hidden="true">${faces.map(f => avatarHTML(f)).join("")}</div>
         </section>
-        ${activeProvider() === "demo" ? `<div class="callout warn"><b>Demo mode.</b> Replies are canned until you connect an AI. Open <button class="btn sm" data-act="settings-ai">Settings</button> to choose Claude, an OpenAI-compatible service or the Anthropic API.</div>` : ""}
+        ${activeProvider() === "demo" ? `<div class="callout warn"><b>Demo mode.</b> Replies are canned until you connect an AI. Open <button class="btn sm" data-act="settings-ai">Settings</button> to connect OpenRouter, Claude, a local model or the Anthropic API.</div>` : ""}
         <div class="sec-head"><h3>Your companions</h3><span class="small">Most recent first</span></div>
         <div class="grid">
           ${sortedChars().map(ch => `
@@ -1870,6 +1939,31 @@ function openSettings(startTab = "you") {
   const st = structuredClone(S.settings);
   let tab = startTab;
   const tabs = [["you", "You"], ["look", "Look & sound"], ["ai", "AI chat"], ["images", "Images"], ["mature", "18+"]];
+  let orQuery = "", orBusy = false, orErr = "";
+  const orSettingsHTML = () => {
+    const o = st.openrouter, list = orModels || [];
+    const q = orQuery.trim().toLowerCase();
+    const shown = list.filter(x => !q || (x.name + " " + x.id).toLowerCase().includes(q)).slice(0, 150);
+    const cur = list.find(x => x.id === o.model);
+    return `
+      <div class="callout" style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span class="provider-pill"><span class="dot ${o.apiKey ? "" : "off"}"></span>${o.apiKey ? "OpenRouter key saved" : "Not connected yet"}</span>
+          ${canOAuth() ? `<button class="btn primary sm" type="button" data-s="or-connect">${ic("spark")} ${o.apiKey ? "Reconnect" : "Connect OpenRouter"}</button>` : ""}
+          ${o.apiKey ? `<button class="btn ghost sm" type="button" data-s="or-forget">Remove key</button>` : ""}
+        </div>
+        <span class="hint">${canOAuth() ? "Connect signs you in at openrouter.ai and brings a key back here automatically. Or paste one below." : "Get a key at openrouter.ai/keys and paste it below."} The key stays in this browser.</span>
+      </div>
+      <div class="field"><label for="s-ork">OpenRouter API key</label><input type="password" id="s-ork" data-k="openrouter.apiKey" value="${esc(o.apiKey)}" placeholder="sk-or-…" autocomplete="off"></div>
+      <div class="field"><label for="s-orm">Model</label><input type="text" id="s-orm" data-k="openrouter.model" value="${esc(o.model)}" placeholder="openrouter/auto">
+        <span class="hint">${cur ? `${esc(cur.name)} · ${Math.round(cur.ctx / 1000)}k context · ${priceLabel(cur)}` : "openrouter/auto picks a model for each message. For explicit roleplay, choose a model that allows adult content."}</span></div>
+      <div class="field"><span class="lbl">Browse models</span>
+        ${orModels ? `<input type="text" id="s-orq" value="${esc(orQuery)}" placeholder="Search ${list.length} models, e.g. llama, mistral, free" aria-label="Search models">
+          <div class="or-list" role="listbox" aria-label="OpenRouter models">${shown.map(x => `<button type="button" role="option" aria-selected="${x.id === o.model}" data-ormodel="${esc(x.id)}"><b>${esc(x.name)}</b><span>${esc(x.id)} · ${Math.round(x.ctx / 1000)}k · ${priceLabel(x)}</span></button>`).join("") || `<span class="small" style="padding:8px">No models match.</span>`}</div>`
+        : `<div><button class="btn sm" type="button" data-s="or-load" ${orBusy ? "disabled" : ""}>${orBusy ? "Loading…" : "Load the model list"}</button></div>`}
+        ${orErr ? `<span class="err-text">${esc(orErr)}</span>` : ""}
+      </div>`;
+  };
   const eff = () => { const keep = S.settings; S.settings = st; const p = activeProvider(), ip = imageProvider(); S.settings = keep; return { p, ip }; };
   const body = () => {
     const { p, ip } = eff();
@@ -1891,18 +1985,19 @@ function openSettings(startTab = "you") {
       </div>`;
     if (tab === "ai") return `
       <select id="s-prov" data-k="provider" aria-label="AI provider">
-        ${[["auto", "Automatic"], ["claude", "Claude (built-in on claude.ai)"], ["openai", "OpenAI-compatible (OpenRouter, LM Studio, Ollama, OpenAI…)"], ["anthropic", "Anthropic API (your key)"], ["demo", "Demo mode (offline, canned replies)"]].map(([v, l]) => `<option value="${v}" ${st.provider === v ? "selected" : ""}>${l}</option>`).join("")}
+        ${[["auto", "Automatic"], ["claude", "Claude (built-in on claude.ai)"], ["openrouter", "OpenRouter (hundreds of models, one key)"], ["openai", "OpenAI-compatible (LM Studio, Ollama, OpenAI…)"], ["anthropic", "Anthropic API (your key)"], ["demo", "Demo mode (offline, canned replies)"]].map(([v, l]) => `<option value="${v}" ${st.provider === v ? "selected" : ""}>${l}</option>`).join("")}
       </select>
       <div class="small">Currently using: <b>${PROVIDER_NAMES[p]}</b></div>
       ${p === "claude" ? `<div class="callout">Uses your own Claude account when this page is open on claude.ai. Nothing to configure. Claude keeps to Anthropic's usage policies, so explicit content isn't available with this provider.</div>` : ""}
+      ${st.provider === "openrouter" || (st.provider === "auto" && p === "openrouter") ? orSettingsHTML() : ""}
       ${st.provider === "openai" ? `
-        <div class="field"><label for="s-ob">Base URL</label><input type="url" id="s-ob" data-k="openai.baseUrl" value="${esc(st.openai.baseUrl)}"><span class="hint">OpenRouter: https://openrouter.ai/api/v1 · LM Studio: http://localhost:1234/v1 · Ollama: http://localhost:11434/v1</span></div>
+        <div class="field"><label for="s-ob">Base URL</label><input type="url" id="s-ob" data-k="openai.baseUrl" value="${esc(st.openai.baseUrl)}"><span class="hint">LM Studio: http://localhost:1234/v1 · Ollama: http://localhost:11434/v1 · OpenAI: https://api.openai.com/v1</span></div>
         <div class="row"><div class="field"><label for="s-ok">API key</label><input type="password" id="s-ok" data-k="openai.apiKey" value="${esc(st.openai.apiKey)}" placeholder="Not needed for local servers" autocomplete="off"></div>
         <div class="field"><label for="s-om">Model</label><input type="text" id="s-om" data-k="openai.model" value="${esc(st.openai.model)}" placeholder="e.g. meta-llama/llama-3.3-70b-instruct"></div></div>` : ""}
       ${st.provider === "anthropic" ? `
         <div class="row"><div class="field"><label for="s-ak">API key</label><input type="password" id="s-ak" data-k="anthropic.apiKey" value="${esc(st.anthropic.apiKey)}" autocomplete="off"></div>
         <div class="field"><label for="s-am">Model</label><input type="text" id="s-am" data-k="anthropic.model" value="${esc(st.anthropic.model)}"></div></div>` : ""}
-      ${(st.provider === "openai" || st.provider === "anthropic") && inViewer ? `<div class="callout warn">Outside services are blocked while Kindred runs inside claude.ai. Use the hosted or local version for these (see the README). Keys stay in this browser only.</div>` : ""}
+      ${["openai", "anthropic", "openrouter"].includes(st.provider) && inViewer ? `<div class="callout warn">Outside services are blocked while Kindred runs inside claude.ai. Use the hosted or local version for these (see the README). Keys stay in this browser only.</div>` : ""}
       <div class="row">
         <div class="field"><label for="s-temp">Creativity: <span id="tempV">${st.temperature}</span></label><input type="range" id="s-temp" min="0" max="1.5" step="0.05" data-k="temperature" value="${st.temperature}"></div>
         <div class="field"><label for="s-max">Max reply tokens</label><input type="number" id="s-max" min="64" max="4000" data-k="maxTokens" value="${st.maxTokens}"></div>
@@ -1924,7 +2019,7 @@ function openSettings(startTab = "you") {
       <label class="switch"><input type="checkbox" id="s-age" data-k="ageConfirmed" ${st.ageConfirmed ? "checked" : ""}><span><b>I confirm I'm 18 or older</b></span></label>
       <label class="switch"><input type="checkbox" id="s-mature" data-k="mature" ${st.mature ? "checked" : ""} ${st.ageConfirmed ? "" : "disabled"}><span><b>Mature mode</b><br><span class="small">Turns on 18+ chat and images for every companion whose 18+ switch is on (new companions start with it on).</span></span></label>
       ${st.mature ? `<div class="field"><span class="lbl">Intensity</span>${pickHTML("intensity", ["explicit", "suggestive"], st.intensity, { explicit: "Explicit", suggestive: "Suggestive" })}<span class="hint">Explicit allows graphic sex scenes. Suggestive keeps it to flirting, tension and fade-to-black.</span></div>` : ""}
-      <div class="callout"><b>What each provider allows</b><br>Claude (built-in) keeps intimate scenes within Anthropic's usage policies, so it stays tasteful. For explicit chat, use an OpenAI-compatible provider (OpenRouter, or a local model in LM Studio or Ollama) with a model that allows adult content. For explicit images, use Stable Diffusion WebUI or Forge with an NSFW-capable checkpoint, or Pollinations.</div>
+      <div class="callout"><b>What each provider allows</b><br>Claude (built-in) keeps intimate scenes within Anthropic's usage policies, so it stays tasteful. For explicit chat, use OpenRouter or a local model (LM Studio, Ollama) and pick a model that allows adult content. For explicit images, use Stable Diffusion WebUI or Forge with an NSFW-capable checkpoint, or Pollinations.</div>
       <div class="callout warn">Hard limits that no setting changes: every character is an adult, and anything involving minors or childlike depictions is blocked in prompts and images.</div>`;
   };
   const m = openModal(`
@@ -1944,12 +2039,22 @@ function openSettings(startTab = "you") {
     if (["provider", "tts.provider", "image.provider"].includes(k)) paint();
     if (k === "ageConfirmed" || k === "mature") { if (!st.ageConfirmed) st.mature = false; paint(); }
   });
-  m.addEventListener("click", e => {
+  m.addEventListener("input", e => {
+    if (e.target.id !== "s-orq") return;
+    orQuery = e.target.value; const pos = e.target.selectionStart; paint();
+    const q = $("#s-orq", m); q.focus(); q.setSelectionRange(pos, pos);
+  });
+  m.addEventListener("click", async e => {
+    const om = e.target.closest("[data-ormodel]");
+    if (om) { st.openrouter.model = om.dataset.ormodel; const keep = $(".or-list", m)?.scrollTop; paint(); const l = $(".or-list", m); if (l) l.scrollTop = keep || 0; return; }
     const tb = e.target.closest("[data-stab]"); if (tb) { tab = tb.dataset.stab; paint(); return; }
     const sw = e.target.closest("[data-accent]"); if (sw) { st.accent = Number(sw.dataset.accent); applyTheme(st); paint(); return; }
     const pb = e.target.closest("[data-pick] button"); if (pb) { st[pb.parentElement.dataset.pick] = pb.dataset.v; applyTheme(st); paint(); return; }
     const a = e.target.closest("[data-s]")?.dataset.s;
     if (a === "close") closeModal();
+    if (a === "or-load") { orBusy = true; orErr = ""; paint(); try { await loadOpenRouterModels(); } catch (err) { orErr = err.message || String(err); } orBusy = false; paint(); }
+    if (a === "or-forget") { st.openrouter.apiKey = ""; paint(); }
+    if (a === "or-connect") { if (st.provider === "auto") st.provider = "openrouter"; S.settings = st; save(); layer._onClose = null; connectOpenRouter(); }
     if (a === "save") {
       st.maxTokens = clamp(st.maxTokens || 600, 64, 4000); st.historyLimit = clamp(st.historyLimit || 40, 4, 200);
       if (!st.ageConfirmed) st.mature = false;
@@ -2118,5 +2223,6 @@ if (!inViewer && "serviceWorker" in navigator && /^https?:$/.test(location.proto
 
 render();
 if (!S.settings.onboarded || !S.settings.ageConfirmed) openWelcome();
+else finishOpenRouterAuth();
 })();
 </script>
